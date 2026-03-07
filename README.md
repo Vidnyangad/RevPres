@@ -18,9 +18,12 @@ sudo apt install libreoffice xdotool
 ```
 
 ### 2. Python Dependencies
-Ensure you have Python 3 installed. Install the necessary Python packages using pip:
+Ensure you have Python 3 and `pip` installed. On a Raspberry Pi, it's recommended to create a virtual environment for Python packages to avoid conflicts with system-managed packages:
 
 ```bash
+sudo apt install python3-venv
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
