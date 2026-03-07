@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presentation Controller</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 50px;
+            background-color: #f4f4f9;
+        }
+        h1 {
+            color: #333;
+        }
+        .container {
+            max-width: 400px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin: 15px 0;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+        }
+        .btn-start {
+            background-color: #28a745;
+        }
+        .btn-start:hover {
+            background-color: #218838;
+        }
+        .btn-stop {
+            background-color: #dc3545;
+        }
+        .btn-stop:hover {
+            background-color: #c82333;
+        }
+        .btn-goto {
+            background-color: #007bff;
+        }
+        .btn-goto:hover {
+            background-color: #0069d9;
+        }
+        #status {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Slideshow Controller</h1>
+        
+        <div class="form-group">
+            <label for="total-time">Total Time (s)</label>
+            <input type="number" id="total-time" value="60" min="1">
+        </div>
+
+        <button class="btn-start" onclick="sendAction('start')">Start</button>
+        <button class="btn-stop" onclick="sendAction('stop')">Stop</button>
+
+        <hr style="margin: 20px 0; border: 1px solid #eee;">
+
+        <div class="form-group">
+            <label for="goto-slide">Goto (1-16)</label>
+            <input type="number" id="goto-slide" value="" min="1" max="16" placeholder="Enter slide number (1-16)">
+        </div>
+        <button class="btn-goto" onclick="sendGoto()">Trigger Goto</button>
+        
+        <div id="status">Status: IDLE</div>
+    </div>
+
+    <script>
+        function sendAction(action) {
+            const totalTime = document.getElementById('total-time').value;
+            
+            fetch(`/api/${action}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ total_time: totalTime })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('status').innerText = 'Status: ' + data.state;
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        function sendGoto() {
+            const totalTime = document.getElementById('total-time').value;
+            const gotoSlide = document.getElementById('goto-slide').value;
+            
+            if (!gotoSlide) {
+                alert("Please enter a Goto slide number");
+                return;
+            }
+
+            fetch(`/api/goto`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    total_time: totalTime,
+                    goto: gotoSlide
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'ok') {
+                    document.getElementById('status').innerText = 'Status: ' + data.state;
+                } else {
+                    alert("Error: " + data.message);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>
