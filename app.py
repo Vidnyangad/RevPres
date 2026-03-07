@@ -7,8 +7,11 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
+# Configuration
+PRESENTATION_PATH = "presentation.odp"
+
 # Array of 16 numbers (weights) for slides 2 to 17
-weights = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+weights = [1] * 16
 
 state_lock = threading.Lock()
 # state can be: 'IDLE', 'PLAYING', 'GOTO', 'STOPPING'
@@ -177,15 +180,10 @@ def start_presentation(presentation_path):
         print(f"Error starting presentation: {e}")
 
 if __name__ == '__main__':
-    # Determine the presentation file from command line arguments
-    presentation_file = "presentation.odp"
-    if len(sys.argv) > 1:
-        presentation_file = sys.argv[1]
-
-    if os.path.exists(presentation_file):
+    if os.path.exists(PRESENTATION_PATH):
         # Start the presentation in a separate thread so we don't block Flask startup
-        threading.Thread(target=start_presentation, args=(presentation_file,), daemon=True).start()
+        threading.Thread(target=start_presentation, args=(PRESENTATION_PATH,), daemon=True).start()
     else:
-        print(f"Warning: Presentation file '{presentation_file}' not found. You will need to start it manually.")
+        print(f"Warning: Presentation file '{PRESENTATION_PATH}' not found. Please check PRESENTATION_PATH in app.py.")
 
     app.run(host='0.0.0.0', port=5000)
