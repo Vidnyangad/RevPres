@@ -35,18 +35,10 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Running LibreOffice Impress
-Open your 17-slide LibreOffice Impress presentation and start the slideshow.
+### 4. Running the Web Application
+Start the Flask application and pass the path to your LibreOffice Impress presentation as an argument. If no argument is provided, it will look for a file named `presentation.odp` in the current directory.
 
 ```bash
-libreoffice --show path/to/presentation.odp
+python3 app.py path/to/your/presentation.odp
 ```
-Make sure the LibreOffice presentation has the active focus so `xdotool` can send keystrokes to it.
-
-### 5. Running the Web Application
-Start the Flask application:
-
-```bash
-python3 app.py
-```
-The application will run on `0.0.0.0:5000`. You can access it via a web browser from any device on the same network using the Raspberry Pi's IP address: `http://<raspberry_pi_ip>:5000`.
+The application will automatically start LibreOffice Impress in presentation mode and bring it to focus. It will then run on `0.0.0.0:5000`. You can access it via a web browser from any device on the same network using the Raspberry Pi's IP address: `http://<raspberry_pi_ip>:5000`.

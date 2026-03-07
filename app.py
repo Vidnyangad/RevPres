@@ -1,6 +1,8 @@
 import time
 import threading
 import subprocess
+import sys
+import os
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
@@ -153,5 +155,37 @@ def goto():
     else:
         return jsonify({"status": "error", "message": "Goto must be between 1 and 16"}), 400
 
+def start_presentation(presentation_path):
+    print(f"Starting LibreOffice presentation: {presentation_path}")
+    try:
+        # Launch libreoffice in show mode
+        subprocess.Popen(['libreoffice', '--show', presentation_path])
+
+        # Give LibreOffice some time to open
+        time.sleep(5)
+
+        # Try to focus the window. LibreOffice Impress slideshow windows typically have class 'Soffice'
+        # We search for a window with name starting with 'LibreOffice' or class 'Soffice'
+        try:
+            # We use xdotool search to find the window and windowactivate to focus it.
+            # Usually, the presentation window is the active one, but just in case:
+            subprocess.run(['xdotool', 'search', '--class', 'Soffice', 'windowactivate'], check=False)
+        except Exception as e:
+            print(f"Could not focus window: {e}")
+
+    except Exception as e:
+        print(f"Error starting presentation: {e}")
+
 if __name__ == '__main__':
+    # Determine the presentation file from command line arguments
+    presentation_file = "presentation.odp"
+    if len(sys.argv) > 1:
+        presentation_file = sys.argv[1]
+
+    if os.path.exists(presentation_file):
+        # Start the presentation in a separate thread so we don't block Flask startup
+        threading.Thread(target=start_presentation, args=(presentation_file,), daemon=True).start()
+    else:
+        print(f"Warning: Presentation file '{presentation_file}' not found. You will need to start it manually.")
+
     app.run(host='0.0.0.0', port=5000)
