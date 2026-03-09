@@ -7,9 +7,19 @@ import json
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 
+try:
+    import RPi.GPIO as GPIO
+    GPIO_AVAILABLE = True
+except (ImportError, RuntimeError):
+    GPIO_AVAILABLE = False
+    print("Warning: RPi.GPIO module not found or not running on a Raspberry Pi. Hardware button disabled.")
+
 load_dotenv()
 
 app = Flask(__name__)
+
+# Hardware Start Button Configuration
+START_BUTTON_PIN = int(os.environ.get("START_BUTTON_PIN", "17"))
 
 # Configuration from Environment Variables
 PRESENTATION_PATH = os.environ.get("PRESENTATION_PATH", "presentation.odp")
@@ -133,6 +143,35 @@ def presentation_worker():
 # Start the worker thread
 worker_thread = threading.Thread(target=presentation_worker, daemon=True)
 worker_thread.start()
+
+def hardware_button_callback(channel):
+    global current_state, current_slide_index, remaining_duration
+    # Same logic as /api/start
+    with state_lock:
+        if current_state != 'PAUSED':
+            current_slide_index = 2
+            remaining_duration = 0.0
+        current_state = 'PLAYING'
+        interrupt_event.set()
+    print("Hardware Start button pressed. Starting presentation...")
+
+def setup_gpio():
+    if not GPIO_AVAILABLE:
+        return
+
+    try:
+        GPIO.setmode(GPIO.BCM)
+        # Use internal pull-up resistor
+        GPIO.setup(START_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        # Add event detection for falling edge (button press connects to ground)
+        # bouncetime prevents multiple triggers from a single press
+        GPIO.add_event_detect(START_BUTTON_PIN, GPIO.FALLING, callback=hardware_button_callback, bouncetime=300)
+        print(f"Hardware button setup complete on GPIO {START_BUTTON_PIN}.")
+    except Exception as e:
+        print(f"Error setting up GPIO: {e}")
+
+# Setup GPIO right away
+setup_gpio()
 
 @app.route('/')
 def index():
