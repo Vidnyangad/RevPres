@@ -36,7 +36,6 @@ pip install -r requirements.txt
 ```
 
 ### 4. Configuration
-<<<<<<< update-flask-rpi-readme-8961022657640057616
 Create a `.env` file in the root directory (you can copy `.env.example` as a starting point) to configure the application.
 
 ```env
@@ -49,12 +48,6 @@ TOTAL_SLIDES=16
 # Array of weights for each slide's duration, formatted as a JSON array string.
 # Must contain exactly TOTAL_SLIDES numbers. Defaults to [1, 1, ...] if omitted.
 WEIGHTS="[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]"
-=======
-Open `app.py` in a text editor and ensure the `PRESENTATION_PATH` variable points to your presentation file.
-
-```python
-PRESENTATION_PATH = "path/to/your/presentation.odp"
->>>>>>> main
 ```
 
 ### 5. Running the Web Application
