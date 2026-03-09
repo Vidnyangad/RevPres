@@ -50,7 +50,7 @@ interrupt_event = threading.Event()
 # GPIO Setup
 BUTTON_PIN = 17
 
-def handle_button_press():
+def handle_button_press(channel):
     global current_state, current_slide_index, remaining_duration
 
     with state_lock:
@@ -61,34 +61,14 @@ def handle_button_press():
         interrupt_event.set()
     print("Physical button pressed: Starting presentation", flush=True)
 
-def button_polling_thread():
-    last_state = GPIO.input(BUTTON_PIN)
-    while True:
-        try:
-            current_gpio_state = GPIO.input(BUTTON_PIN)
-            # Detect falling edge: last state was HIGH (1), current is LOW (0)
-            if last_state == GPIO.HIGH and current_gpio_state == GPIO.LOW:
-                handle_button_press()
-                # Simple debounce: wait a bit before checking again
-                time.sleep(0.3)
-                current_gpio_state = GPIO.input(BUTTON_PIN) # Read again after debounce
-
-            last_state = current_gpio_state
-            time.sleep(0.05) # Poll every 50ms
-        except Exception as e:
-            print(f"Error reading GPIO: {e}")
-            break
-
 if GPIO_AVAILABLE:
     try:
         GPIO.setmode(GPIO.BCM)
         # Use internal pull-up resistor
         GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-
-        # Start the polling thread
-        button_thread = threading.Thread(target=button_polling_thread, daemon=True)
-        button_thread.start()
-        print(f"GPIO setup complete. Polling on pin {BUTTON_PIN}.")
+        # Add event detect on FALLING edge (button press connects to ground)
+        GPIO.add_event_detect(BUTTON_PIN, GPIO.FALLING, callback=handle_button_press, bouncetime=300)
+        print(f"GPIO setup complete. Listening for hardware interrupts on pin {BUTTON_PIN}.")
     except Exception as e:
         print(f"Error setting up GPIO: {e}")
         GPIO_AVAILABLE = False
