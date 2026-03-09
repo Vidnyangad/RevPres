@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, jsonify
 app = Flask(__name__)
 
 # Configuration
-PRESENTATION_PATH = "/home/contoller/Documents/TestPres.pptx"
+PRESENTATION_PATH = "/home/controller/Documents/TestPres.pptx"
 
 # Array of 16 numbers (weights) for slides 2 to 17
 weights = [1] * 16
