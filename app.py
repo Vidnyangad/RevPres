@@ -7,6 +7,13 @@ import json
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 
+try:
+    import RPi.GPIO as GPIO
+    GPIO_AVAILABLE = True
+except (ImportError, RuntimeError) as e:
+    GPIO_AVAILABLE = False
+    print(f"Warning: RPi.GPIO module not found or could not be loaded ({e}). Physical button support disabled.")
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -39,6 +46,32 @@ current_slide_index = 2 # from 2 to TOTAL_SLIDES + 1
 remaining_duration = 0.0 # remaining time for the current slide if paused
 total_time = 60.0 # seconds
 interrupt_event = threading.Event()
+
+# GPIO Setup
+BUTTON_PIN = 17
+
+def handle_button_press(channel):
+    global current_state, current_slide_index, remaining_duration
+
+    with state_lock:
+        if current_state != 'PAUSED':
+            current_slide_index = 2
+            remaining_duration = 0.0
+        current_state = 'PLAYING'
+        interrupt_event.set()
+    print("Physical button pressed: Starting presentation")
+
+if GPIO_AVAILABLE:
+    try:
+        GPIO.setmode(GPIO.BCM)
+        # Use internal pull-up resistor
+        GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        # Add event detect on FALLING edge (button press connects to ground)
+        GPIO.add_event_detect(BUTTON_PIN, GPIO.FALLING, callback=handle_button_press, bouncetime=300)
+        print(f"GPIO setup complete. Listening on pin {BUTTON_PIN}.")
+    except Exception as e:
+        print(f"Error setting up GPIO: {e}")
+        GPIO_AVAILABLE = False
 
 def go_to_slide(slide_number):
     try:
@@ -233,4 +266,12 @@ if __name__ == '__main__':
     else:
         print(f"Warning: Presentation file '{PRESENTATION_PATH}' not found. Please check PRESENTATION_PATH in app.py.")
 
-    app.run(host='0.0.0.0', port=5000)
+    try:
+        app.run(host='0.0.0.0', port=5000)
+    finally:
+        if GPIO_AVAILABLE:
+            try:
+                GPIO.cleanup()
+                print("Cleaned up GPIO.")
+            except Exception as e:
+                print(f"Error during GPIO cleanup: {e}")
