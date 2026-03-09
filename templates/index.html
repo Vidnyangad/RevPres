@@ -57,6 +57,13 @@
         .btn-start:hover {
             background-color: #218838;
         }
+        .btn-pause {
+            background-color: #ffc107;
+            color: #333;
+        }
+        .btn-pause:hover {
+            background-color: #e0a800;
+        }
         .btn-stop {
             background-color: #dc3545;
         }
@@ -87,6 +94,7 @@
         </div>
 
         <button class="btn-start" onclick="sendAction('start')">Start</button>
+        <button class="btn-pause" onclick="sendAction('pause')">Pause</button>
         <button class="btn-stop" onclick="sendAction('stop')">Stop</button>
 
         <hr style="margin: 20px 0; border: 1px solid #eee;">
