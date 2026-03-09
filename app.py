@@ -3,7 +3,10 @@ import threading
 import subprocess
 import sys
 import os
+<<<<<<< update-flask-rpi-readme-8961022657640057616
 import json
+=======
+>>>>>>> main
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 
@@ -11,6 +14,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
+<<<<<<< update-flask-rpi-readme-8961022657640057616
 # Configuration from Environment Variables
 PRESENTATION_PATH = os.environ.get("PRESENTATION_PATH", "presentation.odp")
 try:
@@ -31,11 +35,22 @@ if weights_str:
         weights = [1] * TOTAL_SLIDES
 else:
     weights = [1] * TOTAL_SLIDES
+=======
+# Configuration
+PRESENTATION_PATH = "/home/controller/Documents/TestPres.pptx"
+
+# Array of 16 numbers (weights) for slides 2 to 17
+weights = [1] * 16
+>>>>>>> main
 
 state_lock = threading.Lock()
 # state can be: 'IDLE', 'PLAYING', 'PAUSED', 'STOPPING'
 current_state = 'IDLE'
+<<<<<<< update-flask-rpi-readme-8961022657640057616
 current_slide_index = 2 # from 2 to TOTAL_SLIDES + 1
+=======
+current_slide_index = 2 # from 2 to 17
+>>>>>>> main
 remaining_duration = 0.0 # remaining time for the current slide if paused
 total_time = 60.0 # seconds
 interrupt_event = threading.Event()
@@ -81,16 +96,28 @@ def presentation_worker():
             finished_normally = True
             total_weight = sum(weights)
             
+<<<<<<< update-flask-rpi-readme-8961022657640057616
             for i in range(start_idx, TOTAL_SLIDES + 2):
+=======
+            for i in range(start_idx, 18):
+>>>>>>> main
                 with state_lock:
                     if current_state != 'PLAYING':
                         finished_normally = False
                         break # State changed, exit loop
+<<<<<<< update-flask-rpi-readme-8961022657640057616
 
                 # Update current slide in state lock so Pause knows where we are
                 with state_lock:
                     current_slide_index = i
                 
+=======
+                
+                # Update current slide in state lock so Pause knows where we are
+                with state_lock:
+                    current_slide_index = i
+
+>>>>>>> main
                 # Only go to the slide if we aren't resuming from a pause on this exact slide,
                 # or if we are just starting this slide. To simplify, we'll go to the slide.
                 go_to_slide(i)
@@ -204,6 +231,27 @@ def goto():
         return jsonify({"status": "ok", "state": current_state, "goto": slide_index})
     else:
         return jsonify({"status": "error", "message": f"Goto must be between 1 and {TOTAL_SLIDES}"}), 400
+
+def start_presentation(presentation_path):
+    print(f"Starting LibreOffice presentation: {presentation_path}")
+    try:
+        # Launch libreoffice in show mode
+        subprocess.Popen(['libreoffice', '--show', presentation_path])
+
+        # Give LibreOffice some time to open
+        time.sleep(5)
+
+        # Try to focus the window. LibreOffice Impress slideshow windows typically have class 'Soffice'
+        # We search for a window with name starting with 'LibreOffice' or class 'Soffice'
+        try:
+            # We use xdotool search to find the window and windowactivate to focus it.
+            # Usually, the presentation window is the active one, but just in case:
+            subprocess.run(['xdotool', 'search', '--class', 'Soffice', 'windowactivate'], check=False)
+        except Exception as e:
+            print(f"Could not focus window: {e}")
+
+    except Exception as e:
+        print(f"Error starting presentation: {e}")
 
 def start_presentation(presentation_path):
     print(f"Starting LibreOffice presentation: {presentation_path}")
