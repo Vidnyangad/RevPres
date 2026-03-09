@@ -100,8 +100,8 @@
         <hr style="margin: 20px 0; border: 1px solid #eee;">
 
         <div class="form-group">
-            <label for="goto-slide">Goto (1-16)</label>
-            <input type="number" id="goto-slide" value="" min="1" max="16" placeholder="Enter slide number (1-16)">
+            <label for="goto-slide">Goto (1-{{ total_slides }})</label>
+            <input type="number" id="goto-slide" value="" min="1" max="{{ total_slides }}" placeholder="Enter slide number (1-{{ total_slides }})">
         </div>
         <button class="btn-goto" onclick="sendGoto()">Trigger Goto</button>
         
