@@ -226,27 +226,6 @@ def start_presentation(presentation_path):
     except Exception as e:
         print(f"Error starting presentation: {e}")
 
-def start_presentation(presentation_path):
-    print(f"Starting LibreOffice presentation: {presentation_path}")
-    try:
-        # Launch libreoffice in show mode
-        subprocess.Popen(['libreoffice', '--show', presentation_path])
-
-        # Give LibreOffice some time to open
-        time.sleep(5)
-
-        # Try to focus the window. LibreOffice Impress slideshow windows typically have class 'Soffice'
-        # We search for a window with name starting with 'LibreOffice' or class 'Soffice'
-        try:
-            # We use xdotool search to find the window and windowactivate to focus it.
-            # Usually, the presentation window is the active one, but just in case:
-            subprocess.run(['xdotool', 'search', '--class', 'Soffice', 'windowactivate'], check=False)
-        except Exception as e:
-            print(f"Could not focus window: {e}")
-
-    except Exception as e:
-        print(f"Error starting presentation: {e}")
-
 if __name__ == '__main__':
     if os.path.exists(PRESENTATION_PATH):
         # Start the presentation in a separate thread so we don't block Flask startup
