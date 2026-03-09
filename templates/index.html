@@ -57,6 +57,13 @@
         .btn-start:hover {
             background-color: #218838;
         }
+        .btn-pause {
+            background-color: #ffc107;
+            color: #333;
+        }
+        .btn-pause:hover {
+            background-color: #e0a800;
+        }
         .btn-stop {
             background-color: #dc3545;
         }
@@ -87,13 +94,14 @@
         </div>
 
         <button class="btn-start" onclick="sendAction('start')">Start</button>
+        <button class="btn-pause" onclick="sendAction('pause')">Pause</button>
         <button class="btn-stop" onclick="sendAction('stop')">Stop</button>
 
         <hr style="margin: 20px 0; border: 1px solid #eee;">
 
         <div class="form-group">
-            <label for="goto-slide">Goto (1-16)</label>
-            <input type="number" id="goto-slide" value="" min="1" max="16" placeholder="Enter slide number (1-16)">
+            <label for="goto-slide">Goto (1-{{ total_slides }})</label>
+            <input type="number" id="goto-slide" value="" min="1" max="{{ total_slides }}" placeholder="Enter slide number (1-{{ total_slides }})">
         </div>
         <button class="btn-goto" onclick="sendGoto()">Trigger Goto</button>
         
