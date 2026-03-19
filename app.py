@@ -260,7 +260,11 @@ def goto():
         return jsonify({"status": "error", "message": f"Goto must be between 1 and {TOTAL_SLIDES}"}), 400
 
 def start_presentation(presentation_path):
-    print(f"Starting LibreOffice presentation: {presentation_path}")
+    # Wait a bit before starting the presentation to ensure the graphical desktop is fully loaded on startup
+    # This acts as an additional buffer alongside the systemd `After=graphical.target` rule
+    time.sleep(10)
+
+    print(f"Starting LibreOffice presentation: {presentation_path}", flush=True)
     try:
         # Launch libreoffice in show mode
         subprocess.Popen(['libreoffice', '--show', presentation_path])
