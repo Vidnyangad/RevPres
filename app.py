@@ -49,7 +49,7 @@ total_time = 60.0 # seconds
 interrupt_event = threading.Event()
 
 # GPIO Setup
-BUTTON_PIN = 17
+BUTTON_PIN = 27
 
 def handle_button_press():
     global current_state, current_slide_index, remaining_duration
