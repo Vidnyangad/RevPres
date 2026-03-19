@@ -7,7 +7,7 @@ except (ImportError, RuntimeError) as e:
     print("This script must be run on a Raspberry Pi!")
     exit(1)
 
-BUTTON_PIN = 17
+BUTTON_PIN = 27
 
 def setup():
     try:
@@ -26,10 +26,10 @@ def loop():
         while True:
             current_state = GPIO.input(BUTTON_PIN)
             if current_state == GPIO.LOW:
-                print(f"[{time.strftime('%H:%M:%S')}] Button IS PRESSED (Pin 17 is LOW)")
+                print(f"[{time.strftime('%H:%M:%S')}] Button IS PRESSED (Pin 27 is LOW)")
             else:
                 pass # Un-comment below to spam the terminal when not pressed
-                # print(f"[{time.strftime('%H:%M:%S')}] Button is NOT pressed (Pin 17 is HIGH)")
+                # print(f"[{time.strftime('%H:%M:%S')}] Button is NOT pressed (Pin 27 is HIGH)")
 
             time.sleep(0.1) # 100ms
     except KeyboardInterrupt:
