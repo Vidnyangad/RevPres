@@ -4,6 +4,7 @@ import subprocess
 import sys
 import os
 import json
+import atexit
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 
@@ -89,6 +90,16 @@ if GPIO_AVAILABLE:
         button_thread = threading.Thread(target=button_polling_thread, daemon=True)
         button_thread.start()
         print(f"GPIO setup complete. Polling on pin {BUTTON_PIN}.")
+
+        # Register GPIO cleanup on exit
+        def cleanup_gpio():
+            try:
+                GPIO.cleanup()
+                print("Cleaned up GPIO.")
+            except Exception as e:
+                print(f"Error during GPIO cleanup: {e}")
+        atexit.register(cleanup_gpio)
+
     except Exception as e:
         print(f"Error setting up GPIO: {e}")
         GPIO_AVAILABLE = False
@@ -279,19 +290,12 @@ def start_presentation(presentation_path):
     except Exception as e:
         print(f"Error starting presentation: {e}")
 
-if __name__ == '__main__':
-    if os.path.exists(PRESENTATION_PATH):
-        # Start the presentation in a separate thread so we don't block Flask startup
-        threading.Thread(target=start_presentation, args=(PRESENTATION_PATH,), daemon=True).start()
-    else:
-        print(f"Warning: Presentation file '{PRESENTATION_PATH}' not found. Please check PRESENTATION_PATH in app.py.")
+# Start the presentation when the app module is loaded (e.g., by Gunicorn)
+if os.path.exists(PRESENTATION_PATH):
+    # Start the presentation in a separate thread so we don't block Flask startup
+    threading.Thread(target=start_presentation, args=(PRESENTATION_PATH,), daemon=True).start()
+else:
+    print(f"Warning: Presentation file '{PRESENTATION_PATH}' not found. Please check PRESENTATION_PATH in app.py.")
 
-    try:
-        app.run(host='0.0.0.0', port=5000)
-    finally:
-        if GPIO_AVAILABLE:
-            try:
-                GPIO.cleanup()
-                print("Cleaned up GPIO.")
-            except Exception as e:
-                print(f"Error during GPIO cleanup: {e}")
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
