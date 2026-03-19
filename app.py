@@ -4,6 +4,7 @@ import subprocess
 import sys
 import os
 import json
+import atexit
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 
@@ -259,7 +260,11 @@ def goto():
         return jsonify({"status": "error", "message": f"Goto must be between 1 and {TOTAL_SLIDES}"}), 400
 
 def start_presentation(presentation_path):
-    print(f"Starting LibreOffice presentation: {presentation_path}")
+    # Wait a bit before starting the presentation to ensure the graphical desktop is fully loaded on startup
+    # This acts as an additional buffer alongside the systemd `After=graphical.target` rule
+    time.sleep(10)
+
+    print(f"Starting LibreOffice presentation: {presentation_path}", flush=True)
     try:
         # Launch libreoffice in show mode
         subprocess.Popen(['libreoffice', '--show', presentation_path])
@@ -279,19 +284,21 @@ def start_presentation(presentation_path):
     except Exception as e:
         print(f"Error starting presentation: {e}")
 
-if __name__ == '__main__':
-    if os.path.exists(PRESENTATION_PATH):
-        # Start the presentation in a separate thread so we don't block Flask startup
-        threading.Thread(target=start_presentation, args=(PRESENTATION_PATH,), daemon=True).start()
-    else:
-        print(f"Warning: Presentation file '{PRESENTATION_PATH}' not found. Please check PRESENTATION_PATH in app.py.")
+def cleanup_gpio():
+    if GPIO_AVAILABLE:
+        try:
+            GPIO.cleanup()
+            print("Cleaned up GPIO.")
+        except Exception as e:
+            print(f"Error during GPIO cleanup: {e}")
 
-    try:
-        app.run(host='0.0.0.0', port=5000)
-    finally:
-        if GPIO_AVAILABLE:
-            try:
-                GPIO.cleanup()
-                print("Cleaned up GPIO.")
-            except Exception as e:
-                print(f"Error during GPIO cleanup: {e}")
+atexit.register(cleanup_gpio)
+
+if os.path.exists(PRESENTATION_PATH):
+    # Start the presentation in a separate thread so we don't block Flask startup
+    threading.Thread(target=start_presentation, args=(PRESENTATION_PATH,), daemon=True).start()
+else:
+    print(f"Warning: Presentation file '{PRESENTATION_PATH}' not found. Please check PRESENTATION_PATH in app.py.")
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)

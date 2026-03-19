@@ -41,7 +41,7 @@ sudo nano /etc/systemd/system/presentation.service
 ```ini
 [Unit]
 Description=Gunicorn instance to serve the Presentation Controller
-After=network.target
+After=graphical.target
 
 [Service]
 User=pi
@@ -49,13 +49,14 @@ Group=www-data
 WorkingDirectory=/home/pi/your-repository
 Environment="PATH=/home/pi/your-repository/venv/bin"
 Environment="DISPLAY=:0"
+Environment="XAUTHORITY=/home/pi/.Xauthority"
 ExecStart=/home/pi/your-repository/venv/bin/gunicorn -w 1 -b 0.0.0.0:5000 app:app
 Restart=always
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=graphical.target
 ```
-*Note: The `Environment="DISPLAY=:0"` line is crucial so that the application knows which screen to launch LibreOffice on.*
+*Note: The `Environment="DISPLAY=:0"` and `Environment="XAUTHORITY=/home/pi/.Xauthority"` lines are crucial so that the application knows which screen to launch LibreOffice on and has permission to connect to the X server.*
 
 3. Start and enable the service:
 ```bash
