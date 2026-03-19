@@ -27,45 +27,31 @@ gunicorn -w 1 -b 0.0.0.0:5000 app:app
 - `-b 0.0.0.0:5000`: Binds the server to all network interfaces on port 5000.
 - `app:app`: Points to the `app` instance inside the `app.py` file.
 
-## 3. Running as a Service on Boot (systemd)
+## 3. Running Automatically on Desktop Startup
 
-To make the application run automatically whenever the Raspberry Pi turns on, you can create a `systemd` service.
+Because this application relies on a graphical desktop environment (X11) to launch the LibreOffice presentation, it is highly recommended to run it via the Raspberry Pi OS autostart system rather than a background `systemd` service. This guarantees the application only runs *after* the desktop has fully loaded and automatically gives it access to the active display screen.
 
-1. Create a new service file:
+1. Ensure the `autostart` directory exists:
 ```bash
-sudo nano /etc/systemd/system/presentation.service
+mkdir -p /home/pi/.config/autostart
 ```
 
-2. Paste the following configuration (adjust the paths to match where your project is stored):
+2. Create a new `.desktop` autostart file:
+```bash
+nano /home/pi/.config/autostart/presentation.desktop
+```
+
+3. Paste the following configuration (adjust the paths to match where your repository is located):
 
 ```ini
-[Unit]
-Description=Gunicorn instance to serve the Presentation Controller
-After=graphical.target
-
-[Service]
-User=pi
-Group=www-data
-WorkingDirectory=/home/pi/your-repository
-Environment="PATH=/home/pi/your-repository/venv/bin"
-Environment="DISPLAY=:0"
-Environment="XAUTHORITY=/home/pi/.Xauthority"
-ExecStart=/home/pi/your-repository/venv/bin/gunicorn -w 1 -b 0.0.0.0:5000 app:app
-Restart=always
-
-[Install]
-WantedBy=graphical.target
-```
-*Note: The `Environment="DISPLAY=:0"` and `Environment="XAUTHORITY=/home/pi/.Xauthority"` lines are crucial so that the application knows which screen to launch LibreOffice on and has permission to connect to the X server.*
-
-3. Start and enable the service:
-```bash
-sudo systemctl daemon-reload
-sudo systemctl start presentation
-sudo systemctl enable presentation
+[Desktop Entry]
+Type=Application
+Name=Presentation Controller
+Comment=Start the Flask Presentation Controller and LibreOffice
+Exec=bash -c 'cd /home/pi/your-repository && source venv/bin/activate && gunicorn -w 1 -b 0.0.0.0:5000 app:app > gunicorn.log 2>&1'
+StartupNotify=false
+Terminal=false
 ```
 
-You can check the status and logs of your application at any time using:
-```bash
-sudo systemctl status presentation
-```
+4. Reboot your Raspberry Pi. The desktop environment will load, and immediately afterwards, the autostart script will activate your Python virtual environment, start Gunicorn, and automatically launch the LibreOffice presentation.
+
