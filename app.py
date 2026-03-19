@@ -80,19 +80,21 @@ def button_polling_thread():
             print(f"Error reading GPIO: {e}")
             break
 
-if GPIO_AVAILABLE:
-    try:
-        GPIO.setmode(GPIO.BCM)
-        # Use internal pull-up resistor
-        GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+def init_gpio():
+    global GPIO_AVAILABLE
+    if GPIO_AVAILABLE:
+        try:
+            GPIO.setmode(GPIO.BCM)
+            # Use internal pull-up resistor
+            GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-        # Start the polling thread
-        button_thread = threading.Thread(target=button_polling_thread, daemon=True)
-        button_thread.start()
-        print(f"GPIO setup complete. Polling on pin {BUTTON_PIN}.")
-    except Exception as e:
-        print(f"Error setting up GPIO: {e}")
-        GPIO_AVAILABLE = False
+            # Start the polling thread
+            button_thread = threading.Thread(target=button_polling_thread, daemon=True)
+            button_thread.start()
+            print(f"GPIO setup complete. Polling on pin {BUTTON_PIN}.")
+        except Exception as e:
+            print(f"Error setting up GPIO: {e}")
+            GPIO_AVAILABLE = False
 
 def go_to_slide(slide_number):
     try:
@@ -288,13 +290,33 @@ def cleanup_gpio():
         except Exception as e:
             print(f"Error during GPIO cleanup: {e}")
 
-atexit.register(cleanup_gpio)
+# Use a simple module-level workaround to detect when running under Gunicorn,
+# or simply let Gunicorn trigger it via the first request, but ideally we
+# want it to start immediately without waiting for a web request.
+# However, `gunicorn -w 1 --preload` isn't used.
+# Since we need it to start without a request (as this is an autostart kiosk),
+# we should use an application context or threading timer to defer it slightly.
+# Let's start the hook immediately if we are the main module, otherwise defer it
+# just enough so it runs *after* Gunicorn's fork.
 
-if os.path.exists(PRESENTATION_PATH):
-    # Start the presentation in a separate thread so we don't block Flask startup
-    threading.Thread(target=start_presentation, args=(PRESENTATION_PATH,), daemon=True).start()
-else:
-    print(f"Warning: Presentation file '{PRESENTATION_PATH}' not found. Please check PRESENTATION_PATH in app.py.")
+def gunicorn_startup_hook():
+    # 1. Initialize GPIO and button thread
+    init_gpio()
+
+    # 2. Register hardware cleanup on exit
+    atexit.register(cleanup_gpio)
+
+    # 3. Start presentation
+    if os.path.exists(PRESENTATION_PATH):
+        threading.Thread(target=start_presentation, args=(PRESENTATION_PATH,), daemon=True).start()
+    else:
+        print(f"Warning: Presentation file '{PRESENTATION_PATH}' not found.", flush=True)
 
 if __name__ == '__main__':
+    # Local development startup
+    gunicorn_startup_hook()
     app.run(host='0.0.0.0', port=5000)
+elif "gunicorn" in os.environ.get("SERVER_SOFTWARE", "") or "gunicorn" in sys.argv[0]:
+    # Defer startup by 1 second to ensure it runs inside the Gunicorn worker process,
+    # not the master process before it forks.
+    threading.Timer(1.0, gunicorn_startup_hook).start()
