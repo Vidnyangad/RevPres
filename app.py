@@ -265,7 +265,15 @@ def start_presentation(presentation_path):
     print(f"Starting LibreOffice presentation: {presentation_path}", flush=True)
     try:
         # Launch libreoffice in show mode
-        subprocess.Popen(['libreoffice', '--show', presentation_path])
+        subprocess.Popen([
+            'libreoffice',
+            '--norestore',
+            '--nodefault',
+            '--nolockcheck',
+            '--nologo',
+            '--show',
+            presentation_path
+        ])
 
         # Give LibreOffice some time to open
         time.sleep(5)
