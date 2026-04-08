@@ -303,20 +303,6 @@ def goto():
     else:
         return jsonify({"status": "error", "message": f"Goto must be between 1 and {TOTAL_SLIDES}"}), 400
 
-def create_lo_profile(profile_path, display_id):
-    """Creates a minimal LibreOffice user profile forcing the presentation to a specific display."""
-    registry_dir = os.path.join(profile_path, "user")
-    os.makedirs(registry_dir, exist_ok=True)
-    registry_file = os.path.join(registry_dir, "registrymodifications.xcu")
-
-    xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
-<oor:items xmlns:oor="http://openoffice.org/2001/registry" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-<item oor:path="/org.openoffice.Office.Impress/MultiDisplay"><prop oor:name="Display" oor:op="fuse"><value>{display_id}</value></prop></item>
-</oor:items>
-"""
-    with open(registry_file, "w") as f:
-        f.write(xml_content)
-
 def start_presentation(paths):
     for i, path in enumerate(paths):
         if not os.path.exists(path):
@@ -333,12 +319,6 @@ def start_presentation(paths):
 
             # Create a unique profile for each instance so they can run concurrently
             profile_dir_path = f"/tmp/lo_profile_{i}"
-            # Force presentation to display 'i' (0 for first, 1 for second monitor)
-            # if running on the same X display (extended desktop).
-            # If they are separate X displays, this might be 0 for both, but
-            # setting it to 'i' handles the standard Raspberry Pi extended desktop natively.
-            create_lo_profile(profile_dir_path, i)
-
             profile_dir_uri = f"file://{profile_dir_path}"
 
             # Launch libreoffice in show mode
@@ -355,6 +335,18 @@ def start_presentation(paths):
 
             # Give LibreOffice some time to open each presentation
             time.sleep(5)
+
+            # If a WM placement string is provided via environment variable (e.g., "0,0,0,1920,1080")
+            # We use wmctrl to place the window appropriately on the extended desktop.
+            # We find the window using the filename (which is typically in the window title)
+            wm_pos = os.environ.get(f"WINDOW_POS_{i+1}")
+            if wm_pos:
+                filename = os.path.basename(path)
+                try:
+                    subprocess.run(['wmctrl', '-r', filename, '-e', wm_pos], env=env, check=False)
+                    print(f"Moved window '{filename}' to {wm_pos}")
+                except Exception as e:
+                    print(f"Could not run wmctrl for '{filename}': {e}")
 
         except Exception as e:
             print(f"Error starting presentation '{path}': {e}")
