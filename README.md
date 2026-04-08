@@ -39,8 +39,16 @@ pip install -r requirements.txt
 Create a `.env` file in the root directory (you can copy `.env.example` as a starting point) to configure the application.
 
 ```env
-# Path to your presentation file
-PRESENTATION_PATH="path/to/your/presentation.odp"
+# Array of paths to your presentation files.
+# You can specify multiple presentations here, they will start and sync together.
+PRESENTATION_PATHS='["path/to/your/presentation_eng.odp", "path/to/your/presentation_tran.odp"]'
+
+# If you need to start them on specific displays, you can provide DISPLAY variables
+DISPLAY_1=":0.0"
+DISPLAY_2=":0.1"
+
+# Backward compatibility (single presentation)
+# PRESENTATION_PATH="path/to/your/presentation.odp"
 
 # Total number of slides (excluding the title slide, e.g., if you have 17 slides in total, this should be 16)
 TOTAL_SLIDES=16

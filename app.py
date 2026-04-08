@@ -20,7 +20,19 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configuration from Environment Variables
-PRESENTATION_PATH = os.environ.get("PRESENTATION_PATH", "presentation.odp")
+# Now supporting multiple presentations
+# e.g. PRESENTATION_PATHS='["presentation1.odp", "presentation2.odp"]'
+# For backward compatibility, still read PRESENTATION_PATH if it exists.
+presentation_paths_str = os.environ.get("PRESENTATION_PATHS")
+if presentation_paths_str:
+    try:
+        PRESENTATION_PATHS = json.loads(presentation_paths_str)
+    except json.JSONDecodeError:
+        print("Warning: PRESENTATION_PATHS is not valid JSON. Defaulting to single presentation.")
+        PRESENTATION_PATHS = [os.environ.get("PRESENTATION_PATH", "presentation.odp")]
+else:
+    PRESENTATION_PATHS = [os.environ.get("PRESENTATION_PATH", "presentation.odp")]
+
 try:
     TOTAL_SLIDES = int(os.environ.get("TOTAL_SLIDES", "16"))
 except ValueError:
@@ -98,9 +110,39 @@ def init_gpio():
 
 def go_to_slide(slide_number):
     try:
-        # We can send 'type' and 'Return'
-        subprocess.run(['xdotool', 'type', str(slide_number)], check=False)
-        subprocess.run(['xdotool', 'key', 'Return'], check=False)
+        # If the user has explicitly defined different X displays (DISPLAY_1, DISPLAY_2),
+        # we need to run xdotool against each of them.
+        # If they are using a single extended desktop (one DISPLAY), one xdotool call is enough.
+        displays_to_search = set()
+        for i in range(len(PRESENTATION_PATHS)):
+            display_var = f"DISPLAY_{i+1}"
+            if display_var in os.environ:
+                displays_to_search.add(os.environ[display_var])
+
+        if not displays_to_search:
+            # Fallback to current default environment display
+            displays_to_search.add(os.environ.get("DISPLAY", ":0"))
+
+        for display in displays_to_search:
+            env = os.environ.copy()
+            env["DISPLAY"] = display
+
+            # Find all LibreOffice windows on this display
+            result = subprocess.run(['xdotool', 'search', '--class', 'Soffice'], env=env, capture_output=True, text=True, check=False)
+            window_ids = result.stdout.strip().split('\n')
+
+            if not window_ids or window_ids[0] == '':
+                # Fallback if no window found on this display
+                subprocess.run(['xdotool', 'type', str(slide_number)], env=env, check=False)
+                subprocess.run(['xdotool', 'key', 'Return'], env=env, check=False)
+                continue
+
+            for wid in window_ids:
+                if wid.strip():
+                    # type the slide number
+                    subprocess.run(['xdotool', 'type', '--window', wid, str(slide_number)], env=env, check=False)
+                    # press Return
+                    subprocess.run(['xdotool', 'key', '--window', wid, 'Return'], env=env, check=False)
     except Exception as e:
         print(f"Error going to slide: {e}")
 
@@ -261,34 +303,69 @@ def goto():
     else:
         return jsonify({"status": "error", "message": f"Goto must be between 1 and {TOTAL_SLIDES}"}), 400
 
-def start_presentation(presentation_path):
-    print(f"Starting LibreOffice presentation: {presentation_path}", flush=True)
-    try:
-        # Launch libreoffice in show mode
-        subprocess.Popen([
-            'libreoffice',
-            '--norestore',
-            '--nodefault',
-            '--nolockcheck',
-            '--nologo',
-            '--show',
-            presentation_path
-        ])
+def create_lo_profile(profile_path, display_id):
+    """Creates a minimal LibreOffice user profile forcing the presentation to a specific display."""
+    registry_dir = os.path.join(profile_path, "user")
+    os.makedirs(registry_dir, exist_ok=True)
+    registry_file = os.path.join(registry_dir, "registrymodifications.xcu")
 
-        # Give LibreOffice some time to open
-        time.sleep(5)
+    xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<oor:items xmlns:oor="http://openoffice.org/2001/registry" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<item oor:path="/org.openoffice.Office.Impress/MultiDisplay"><prop oor:name="Display" oor:op="fuse"><value>{display_id}</value></prop></item>
+</oor:items>
+"""
+    with open(registry_file, "w") as f:
+        f.write(xml_content)
 
-        # Try to focus the window. LibreOffice Impress slideshow windows typically have class 'Soffice'
-        # We search for a window with name starting with 'LibreOffice' or class 'Soffice'
+def start_presentation(paths):
+    for i, path in enumerate(paths):
+        if not os.path.exists(path):
+            print(f"Warning: Presentation file '{path}' not found.", flush=True)
+            continue
+
+        print(f"Starting LibreOffice presentation: {path}", flush=True)
         try:
-            # We use xdotool search to find the window and windowactivate to focus it.
-            # Usually, the presentation window is the active one, but just in case:
-            subprocess.run(['xdotool', 'search', '--class', 'Soffice', 'windowactivate'], check=False)
-        except Exception as e:
-            print(f"Could not focus window: {e}")
+            # If there are multiple X displays and users set DISPLAY_x env vars
+            env = os.environ.copy()
+            display_var = f"DISPLAY_{i+1}"
+            if display_var in os.environ:
+                env["DISPLAY"] = os.environ[display_var]
 
+            # Create a unique profile for each instance so they can run concurrently
+            profile_dir_path = f"/tmp/lo_profile_{i}"
+            # Force presentation to display 'i' (0 for first, 1 for second monitor)
+            # if running on the same X display (extended desktop).
+            # If they are separate X displays, this might be 0 for both, but
+            # setting it to 'i' handles the standard Raspberry Pi extended desktop natively.
+            create_lo_profile(profile_dir_path, i)
+
+            profile_dir_uri = f"file://{profile_dir_path}"
+
+            # Launch libreoffice in show mode
+            subprocess.Popen([
+                'libreoffice',
+                f'-env:UserInstallation={profile_dir_uri}',
+                '--norestore',
+                '--nodefault',
+                '--nolockcheck',
+                '--nologo',
+                '--show',
+                path
+            ], env=env)
+
+            # Give LibreOffice some time to open each presentation
+            time.sleep(5)
+
+        except Exception as e:
+            print(f"Error starting presentation '{path}': {e}")
+
+    # Try to focus the windows. LibreOffice Impress slideshow windows typically have class 'Soffice'
+    try:
+        # We use xdotool search to find the window and windowactivate to focus it.
+        # This will activate the last found window, but for multiple we might just leave them be
+        subprocess.run(['xdotool', 'search', '--class', 'Soffice', 'windowactivate'], check=False)
     except Exception as e:
-        print(f"Error starting presentation: {e}")
+        print(f"Could not focus window: {e}")
 
 def cleanup_gpio():
     if GPIO_AVAILABLE:
@@ -315,10 +392,7 @@ def gunicorn_startup_hook():
     atexit.register(cleanup_gpio)
 
     # 3. Start presentation
-    if os.path.exists(PRESENTATION_PATH):
-        threading.Thread(target=start_presentation, args=(PRESENTATION_PATH,), daemon=True).start()
-    else:
-        print(f"Warning: Presentation file '{PRESENTATION_PATH}' not found.", flush=True)
+    threading.Thread(target=start_presentation, args=(PRESENTATION_PATHS,), daemon=True).start()
 
 if __name__ == '__main__':
     # Local development startup
