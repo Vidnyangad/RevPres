@@ -45,7 +45,7 @@ state_lock = threading.Lock()
 current_state = 'IDLE'
 current_slide_index = 2 # from 2 to TOTAL_SLIDES + 1
 remaining_duration = 0.0 # remaining time for the current slide if paused
-total_time = 60.0 # seconds
+total_time = 560.0 # seconds
 interrupt_event = threading.Event()
 
 # GPIO Setup
